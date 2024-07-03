@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unstable Unicorns - Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Unstable Unicorns - Game</h1>
+    <h2>Game ID: <span id="game-id"></span></h2>
+    <h3>Player: <span id="player-name"></span></h3>
+    <div id="game-area">
+        <h3>Current Player: <span id="current-player"></span></h3>
+        <h4>Your Hand:</h4>
+        <ul id="hand"></ul>
+        <h4>Your Stable:</h4>
+        <ul id="stable"></ul>
+        <h4>Other Players:</h4>
+        <div id="other-players"></div>
+        <p>Cards in deck: <span id="deck-size"></span></p>
+        <button id="draw-card">Draw Card</button>
+        <button id="play-card">Play Card</button>
+        <button id="end-turn">End Turn</button>
+    </div>
+    <div id="game-log"></div>
+    <script>
+        const socket = io();
+        const gameId = '{{ game_id }}';
+        const playerName = '{{ player_name }}';
+
+        $('#game-id').text(gameId);
+        $('#player-name').text(playerName);
+
+        socket.emit('join_game', {game_id: gameId, player_name: playerName});
+
+        $('#draw-card').click(() => {
+            socket.emit('draw_card', {game_id: gameId, player_name: playerName});
+        });
+
+        $('#play-card').click(() => {
+            const cardIndex = prompt('Enter the index of the card you want to play:');
+            socket.emit('play_card', {game_id: gameId, player_name: playerName, card_index: cardIndex});
+        });
+
+        $('#end-turn').click(() => {
+            socket.emit('end_turn', {game_id: gameId, player_name: playerName});
+        });
+
+        socket.on('player_joined', (data) => {
+            logMessage(data.message);
+        });
+
+        socket.on('game_started', (data) => {
+            logMessage(data.message);
+            $('#current-player').text(data.current_player);
+        });
+
+        socket.on('card_drawn', (data) => {
+            logMessage(data.message);
+        });
+
+        socket.on('card_played', (data) => {
+            logMessage(data.message);
+        });
+
+        socket.on('turn_ended', (data) => {
+            logMessage(data.message);
+        });
+
+        socket.on('game_state_update', (data) => {
+            $('#current-player').text(data.current_player || 'Waiting for game to start');
+            $('#deck-size').text(data.deck_size);
+            
+            const player = data.players.find(p => p.name === playerName);
+            if (player) {
+                updatePlayerHand(player.hand);
+                updatePlayerStable(player.stable);
+            } else {
+                $('#hand').html('<li>Waiting for game to start</li>');
+                $('#stable').html('<li>Waiting for game to start</li>');
+            }
+            
+            updateOtherPlayers(data.players);
+        });
+
+        socket.on('error', (data) => {
+            alert(data.message);
+            logMessage('Error: ' + data.message);
+        });
+
+        function updatePlayerHand(hand) {
+            $('#hand').empty();
+            if (hand.length === 0) {
+                $('#hand').html('<li>No cards in hand</li>');
+            } else {
+                hand.forEach((card, index) => {
+                    $('#hand').append(`<li>${index}: ${card}</li>`);
+                });
+            }
+        }
+
+        function updatePlayerStable(stable) {
+            $('#stable').empty();
+            if (stable.length === 0) {
+                $('#stable').html('<li>No cards in stable</li>');
+            } else {
+                stable.forEach(card => {
+                    $('#stable').append(`<li>${card}</li>`);
+                });
+            }
+        }
+
+        function updateOtherPlayers(players) {
+            $('#other-players').empty();
+            const otherPlayers = players.filter(p => p.name !== playerName);
+            if (otherPlayers.length === 0) {
+                $('#other-players').html('<p>Waiting for other players to join</p>');
+            } else {
+                otherPlayers.forEach(player => {
+                    $('#other-players').append(`
+                        <div>
+                            <h5>${player.name}</h5>
+                            <p>Hand size: ${player.hand.length}</p>
+                            <p>Stable: ${player.stable.join(', ') || 'Empty'}</p>
+                        </div>
+                    `);
+                });
+            }
+        }
+
+        function logMessage(message) {
+            $('#game-log').prepend(`<p>${message}</p>`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unstable Unicorns - Lobby</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Unstable Unicorns - Lobby</h1>
+    <div id="game-setup">
+        <input type="text" id="player-name" placeholder="Your name">
+        <select id="num-players">
+            <option value="2">2 Players</option>
+            <option value="3">3 Players</option>
+            <option value="4">4 Players</option>
+        </select>
+        <button id="create-game">Create Game</button>
+        <hr>
+        <input type="text" id="join-game-id" placeholder="Game ID">
+        <button id="join-game">Join Game</button>
+    </div>
+    <script>
+        const socket = io();
+
+        $('#create-game').click(() => {
+            const playerName = $('#player-name').val();
+            const numPlayers = $('#num-players').val();
+            socket.emit('create_game', {num_players: numPlayers, player_name: playerName});
+        });
+
+        $('#join-game').click(() => {
+            const playerName = $('#player-name').val();
+            const gameId = $('#join-game-id').val();
+            window.location.href = `/${gameId}/${playerName}`;
+        });
+
+        socket.on('game_created', (data) => {
+            window.location.href = `/${data.game_id}/${data.player_name}`;
+        });
+
+        socket.on('error', (data) => {
+            alert(data.message);
+        });
+    </script>
+</body>
+</html>
